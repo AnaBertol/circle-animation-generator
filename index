@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Animação de Círculos</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a0a;
+            color: #fff;
+            font-family: 'Consolas', 'Monaco', monospace;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #111;
+        }
+
+        canvas {
+            border: 1px solid #333;
+            background: #000;
+            cursor: crosshair;
+        }
+
+        .controls {
+            width: 300px;
+            background: #1a1a1a;
+            padding: 20px;
+            border-left: 1px solid #333;
+            overflow-y: auto;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #222;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+
+        .control-group h3 {
+            color: #00ff88;
+            margin-bottom: 12px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .slider-container {
+            margin-bottom: 10px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #ccc;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: #333;
+            outline: none;
+            border-radius: 3px;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #00ff88;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #00ff88;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        .value {
+            color: #00ff88;
+            font-weight: bold;
+            font-size: 11px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(45deg, #00ff88, #00cc70);
+            color: #000;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+        }
+
+        button:hover {
+            background: linear-gradient(45deg, #00cc70, #00aa60);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 255, 136, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .info {
+            background: #1a1a2e;
+            border: 1px solid #0f3460;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            line-height: 1.4;
+            color: #aaa;
+        }
+
+        .status {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #00ff88;
+            border: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="canvas-container">
+            <canvas id="canvas" width="800" height="600"></canvas>
+            <div class="status" id="status">Clique em "Gerar Novo Padrão" para começar</div>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <h3>Geração</h3>
+                <button onclick="generateNewPattern()">Gerar Novo Padrão</button>
+                <button onclick="toggleAnimation()">Pausar/Continuar</button>
+                <button onclick="resetAnimation()">Reiniciar Animação</button>
+                <button onclick="exportAsWebM()">Exportar como WebM</button>
+            </div>
+
+            <div class="control-group">
+                <h3>Círculos</h3>
+                <div class="slider-container">
+                    <label>Quantidade: <span class="value" id="countValue">20</span></label>
+                    <input type="range" id="circleCount" min="5" max="50" value="20" oninput="updateValue('countValue', this.value)">
+                </div>
+                <div class="slider-container">
+                    <label>Tamanho Min: <span class="value" id="minSizeValue">3</span></label>
+                    <input type="range" id="minSize" min="1" max="15" value="3" oninput="updateValue('minSizeValue', this.value)">
+                </div>
+                <div class="slider-container">
+                    <label>Tamanho Max: <span class="value" id="maxSizeValue">20</span></label>
+                    <input type="range" id="maxSize" min="10" max="50" value="20" oninput="updateValue('maxSizeValue', this.value)">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>Animação</h3>
+                <div class="slider-container">
+                    <label>Velocidade: <span class="value" id="speedValue">1</span></label>
+                    <input type="range" id="speed" min="0.2" max="3" step="0.1" value="1" oninput="updateValue('speedValue', this.value)">
+                </div>
+                <div class="slider-container">
+                    <label>% Móveis: <span class="value" id="mobilePercentValue">50</span>%</label>
+                    <input type="range" id="mobilePercent" min="20" max="80" value="50" oninput="updateValue('mobilePercentValue', this.value)">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>Visual</h3>
+                <div class="slider-container">
+                    <label>Contorno Min: <span class="value" id="minStrokeValue">0.5</span></label>
+                    <input type="range" id="minStroke" min="0.1" max="3" step="0.1" value="0.5" oninput="updateValue('minStrokeValue', this.value)">
+                </div>
+                <div class="slider-container">
+                    <label>Contorno Max: <span class="value" id="maxStrokeValue">5</span></label>
+                    <input type="range" id="maxStroke" min="2" max="10" step="0.1" value="5" oninput="updateValue('maxStrokeValue', this.value)">
+                </div>
+                <div class="slider-container">
+                    <label>Espessura Linha Min: <span class="value" id="minLineWidthValue">1</span></label>
+                    <input type="range" id="minLineWidth" min="0.2" max="2" step="0.1" value="1" oninput="updateValue('minLineWidthValue', this.value)">
+                </div>
+                <div class="slider-container">
+                    <label>Espessura Linha Max: <span class="value" id="maxLineWidthValue">3</span></label>
+                    <input type="range" id="maxLineWidth" min="1.5" max="6" step="0.1" value="3" oninput="updateValue('maxLineWidthValue', this.value)">
+                </div>
+                <div class="slider-container">
+                    <label>Opacidade: <span class="value" id="opacityValue">100</span>%</label>
+                    <input type="range" id="opacity" min="30" max="100" value="100" oninput="updateValue('opacityValue', this.value)">
+                </div>
+            </div>
+
+            <div class="info">
+                <strong>Como usar:</strong><br>
+                • Ajuste os parâmetros e clique em "Gerar Novo Padrão"<br>
+                • Metade dos círculos se move, metade fica fixa<br>
+                • Linhas conectam pares de círculos<br>
+                • Use "Exportar WebM" para salvar a animação<br>
+                • Experimente diferentes configurações!
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const status = document.getElementById('status');
+
+        let circles = [];
+        let connections = [];
+        let animationId;
+        let isAnimating = false;
+        let animationProgress = 0;
+
+        // Funções de easing
+        function easeInOutCubic(t) {
+            return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        }
+
+        function easeOutCubic(t) {
+            return 1 - Math.pow(1 - t, 3);
+        }
+
+        function easeInCubic(t) {
+            return t * t * t;
+        }
+
+        function easeOutBack(t) {
+            const c1 = 1.70158;
+            const c3 = c1 + 1;
+            return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+        }
+
+        class Connection {
+            constructor(from, to) {
+                this.from = from;
+                this.to = to;
+                this.birthTime = 0.1 + Math.random() * 0.4; // Nasce entre 10-50% do ciclo
+                this.animationType = Math.floor(Math.random() * 2); // 0: crescer, 1: encolher
+                this.shrinkFromStart = Math.random() > 0.5; // Se encolhe da origem ou destino
+                this.pulsePhase = Math.random() * Math.PI * 2;
+                this.lifetime = 0.3 + Math.random() * 0.4; // Quanto tempo fica visível
+            }
+
+            getAnimationProgress(globalProgress) {
+                if (globalProgress < this.birthTime) return 0;
+                
+                const localProgress = (globalProgress - this.birthTime) / this.lifetime;
+                return Math.min(localProgress, 1);
+            }
+
+            draw(globalProgress) {
+                const animProgress = this.getAnimationProgress(globalProgress);
+                if (animProgress === 0) return;
+                
+                const opacity = document.getElementById('opacity').value / 100;
+                const minLineWidth = parseFloat(document.getElementById('minLineWidth').value);
+                const maxLineWidth = parseFloat(document.getElementById('maxLineWidth').value);
+                const connectionLineWidth = Math.random() * (maxLineWidth - minLineWidth) + minLineWidth;
+                
+                ctx.save();
+                
+                let startX = this.from.currentX;
+                let startY = this.from.currentY;
+                let endX = this.to.currentX;
+                let endY = this.to.currentY;
+                
+                switch (this.animationType) {
+                    case 0: // Crescer gradualmente
+                        const growProgress = easeOutCubic(animProgress);
+                        endX = startX + (endX - startX) * growProgress;
+                        endY = startY + (endY - startY) * growProgress;
+                        ctx.globalAlpha = opacity * 0.6 * Math.min(animProgress * 3, 1);
+                        break;
+                        
+                    case 1: // Encolher de uma das pontas
+                        if (animProgress < 0.7) {
+                            const shrinkProgress = easeInCubic(animProgress / 0.7);
+                            if (this.shrinkFromStart) {
+                                startX = startX + (endX - startX) * shrinkProgress;
+                                startY = startY + (endY - startY) * shrinkProgress;
+                            } else {
+                                endX = endX - (endX - startX) * shrinkProgress;
+                                endY = endY - (endY - startY) * shrinkProgress;
+                            }
+                            ctx.globalAlpha = opacity * 0.6 * (1 - shrinkProgress * 0.5);
+                        } else {
+                            // Desaparece nos últimos 30%
+                            const fadeProgress = (animProgress - 0.7) / 0.3;
+                            ctx.globalAlpha = opacity * 0.6 * (1 - fadeProgress);
+                        }
+                        break;
+                }
+                
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = connectionLineWidth;
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        class Circle {
+            constructor(x, y, radius, isMobile) {
+                this.startX = x;
+                this.startY = y;
+                this.currentX = x;
+                this.currentY = y;
+                this.radius = radius;
+                this.baseRadius = radius;
+                this.isMobile = isMobile;
+                this.strokeWidth = Math.random() * 2 + 0.5;
+                this.filled = Math.random() > 0.3;
+                
+                // Animações da esfera
+                this.birthTime = Math.random() * 0.5; // Quando nasce (0-50% do ciclo)
+                this.fadeInDuration = 0.1 + Math.random() * 0.6; // Duração variável do crescimento (10-70% do tempo restante)
+                
+                // Animação angular apenas para círculos vazados (pretos), preenchidos sempre crescem por tamanho
+                if (this.filled) {
+                    this.animationType = 0; // Sempre crescimento por tamanho para círculos brancos
+                } else {
+                    this.animationType = Math.floor(Math.random() * 2); // 0: crescer tamanho, 1: crescer angular para círculos vazados
+                }
+                
+                this.startAngle = Math.random() * Math.PI * 2; // Ângulo inicial aleatório para animação angular
+                
+                if (isMobile) {
+                    // Posição final aleatória para círculos móveis
+                    this.endX = Math.random() * (canvas.width - radius * 2) + radius;
+                    this.endY = Math.random() * (canvas.height - radius * 2) + radius;
+                } else {
+                    this.endX = x;
+                    this.endY = y;
+                }
+            }
+
+            update(progress) {
+                if (this.isMobile) {
+                    this.currentX = this.startX + (this.endX - this.startX) * progress;
+                    this.currentY = this.startY + (this.endY - this.startY) * progress;
+                }
+                
+                // Atualiza animações da esfera
+                this.updateAnimations(progress);
+            }
+
+            updateAnimations(progress) {
+                if (progress < this.birthTime) {
+                    this.opacity = 0;
+                    this.radius = this.animationType === 0 ? 0 : this.baseRadius;
+                    this.currentAngle = 0;
+                } else if (progress < this.birthTime + this.fadeInDuration) {
+                    const growProgress = (progress - this.birthTime) / this.fadeInDuration;
+                    this.opacity = easeOutCubic(growProgress);
+                    
+                    if (this.animationType === 0) {
+                        // Crescimento por tamanho
+                        this.radius = this.baseRadius * easeOutBack(growProgress);
+                        this.currentAngle = Math.PI * 2; // Círculo completo
+                    } else {
+                        // Crescimento angular
+                        this.radius = this.baseRadius;
+                        this.currentAngle = Math.PI * 2 * easeOutCubic(growProgress);
+                    }
+                } else {
+                    this.opacity = 1;
+                    this.radius = this.baseRadius;
+                    this.currentAngle = Math.PI * 2; // Círculo completo
+                }
+            }
+
+            draw() {
+                const globalOpacity = document.getElementById('opacity').value / 100;
+                
+                ctx.save();
+                ctx.globalAlpha = globalOpacity * (this.opacity || 1);
+                ctx.lineWidth = this.strokeWidth;
+                ctx.strokeStyle = '#ffffff';
+                
+                if (this.filled) {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    if (this.currentAngle >= Math.PI * 2) {
+                        // Círculo completo
+                        ctx.arc(this.currentX, this.currentY, this.radius, 0, Math.PI * 2);
+                    } else {
+                        // Arco parcial
+                        ctx.arc(this.currentX, this.currentY, this.radius, this.startAngle, this.startAngle + this.currentAngle);
+                        ctx.lineTo(this.currentX, this.currentY);
+                    }
+                    ctx.fill();
+                } else {
+                    // Primeiro preenche com a cor de fundo (preto) para "apagar" linhas internas
+                    ctx.fillStyle = '#000000';
+                    ctx.beginPath();
+                    if (this.currentAngle >= Math.PI * 2) {
+                        // Círculo completo
+                        ctx.arc(this.currentX, this.currentY, this.radius, 0, Math.PI * 2);
+                    } else {
+                        // Arco parcial
+                        ctx.arc(this.currentX, this.currentY, this.radius, this.startAngle, this.startAngle + this.currentAngle);
+                        ctx.lineTo(this.currentX, this.currentY);
+                    }
+                    ctx.fill();
+                    
+                    // Depois desenha o contorno
+                    ctx.beginPath();
+                    if (this.currentAngle >= Math.PI * 2) {
+                        // Círculo completo
+                        ctx.arc(this.currentX, this.currentY, this.radius, 0, Math.PI * 2);
+                    } else {
+                        // Arco parcial
+                        ctx.arc(this.currentX, this.currentY, this.radius, this.startAngle, this.startAngle + this.currentAngle);
+                    }
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+        }
+
+        function generateCircles() {
+            circles = [];
+            const count = parseInt(document.getElementById('circleCount').value);
+            const minSize = parseInt(document.getElementById('minSize').value);
+            const maxSize = parseInt(document.getElementById('maxSize').value);
+            const mobilePercent = parseInt(document.getElementById('mobilePercent').value) / 100;
+            const minLineWidth = parseFloat(document.getElementById('minLineWidth').value);
+            const maxLineWidth = parseFloat(document.getElementById('maxLineWidth').value);
+            const minStroke = parseFloat(document.getElementById('minStroke').value);
+            const maxStroke = parseFloat(document.getElementById('maxStroke').value);
+            
+            for (let i = 0; i < count; i++) {
+                const radius = Math.random() * (maxSize - minSize) + minSize;
+                const x = Math.random() * (canvas.width - radius * 2) + radius;
+                const y = Math.random() * (canvas.height - radius * 2) + radius;
+                const isMobile = Math.random() < mobilePercent;
+                
+                const circle = new Circle(x, y, radius, isMobile);
+                // Aplica a espessura aleatória baseada nos controles
+                circle.strokeWidth = Math.random() * (maxStroke - minStroke) + minStroke;
+                
+                circles.push(circle);
+            }
+        }
+
+        function generateConnections() {
+            connections = [];
+            const availableCircles = [...circles]; // Cópia para não modificar o array original
+            
+            // Embaralha o array para conexões aleatórias
+            for (let i = availableCircles.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [availableCircles[i], availableCircles[j]] = [availableCircles[j], availableCircles[i]];
+            }
+            
+            // Conecta círculos em pares
+            for (let i = 0; i < availableCircles.length - 1; i += 2) {
+                const circle1 = availableCircles[i];
+                const circle2 = availableCircles[i + 1];
+                connections.push(new Connection(circle1, circle2));
+            }
+            
+            // Se sobrar um círculo ímpar, conecta com um par aleatório existente
+            if (availableCircles.length % 2 === 1) {
+                const lastCircle = availableCircles[availableCircles.length - 1];
+                const randomConnection = connections[Math.floor(Math.random() * connections.length)];
+                // Conecta o último círculo com um dos círculos de uma conexão existente
+                connections.push(new Connection(lastCircle, randomConnection.from));
+            }
+        }
+
+        function drawConnections() {
+            connections.forEach(connection => {
+                connection.draw(animationProgress);
+            });
+        }
+
+        function animate() {
+            if (!isAnimating) return;
+            
+            const speed = parseFloat(document.getElementById('speed').value);
+            animationProgress += 0.01 * speed;
+            
+            if (animationProgress >= 1) {
+                animationProgress = 0; // Loop da animação
+            }
+            
+            const easedProgress = easeInOutCubic(animationProgress);
+            
+            // Limpa o canvas
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // PRIMEIRO: Desenha conexões (por baixo)
+            drawConnections();
+            
+            // DEPOIS: Atualiza e desenha círculos (por cima)
+            circles.forEach(circle => {
+                circle.update(easedProgress);
+                circle.draw();
+            });
+            
+            // Atualiza status
+            const mobileCount = circles.filter(c => c.isMobile).length;
+            const pairs = Math.floor(connections.length);
+            status.textContent = `${circles.length} círculos (${mobileCount} móveis) • ${pairs} pares conectados • ${Math.round(animationProgress * 100)}%`;
+            
+            animationId = requestAnimationFrame(animate);
+        }
+
+        function generateNewPattern() {
+            generateCircles();
+            generateConnections();
+            animationProgress = 0;
+            
+            if (!isAnimating) {
+                isAnimating = true;
+                animate();
+            }
+        }
+
+        function toggleAnimation() {
+            if (isAnimating) {
+                isAnimating = false;
+                cancelAnimationFrame(animationId);
+                status.textContent += ' • PAUSADO';
+            } else {
+                isAnimating = true;
+                animate();
+            }
+        }
+
+        function resetAnimation() {
+            animationProgress = 0;
+            if (!isAnimating) {
+                isAnimating = true;
+                animate();
+            }
+        }
+
+        function updateValue(elementId, value) {
+            document.getElementById(elementId).textContent = value;
+        }
+
+        let mediaRecorder;
+        let recordedChunks = [];
+
+        async function exportAsWebM() {
+            if (!canvas.captureStream) {
+                alert('Seu navegador não suporta captura de canvas. Tente usar Chrome ou Firefox mais recentes.');
+                return;
+            }
+            
+            try {
+                // Reinicia a animação para capturar um ciclo completo
+                animationProgress = 0;
+                recordedChunks = [];
+                
+                // Configura a captura
+                const stream = canvas.captureStream(30); // 30 FPS
+                mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'video/webm;codecs=vp9'
+                });
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+                
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `circle-animation-${Date.now()}.webm`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    status.textContent += ' • EXPORTADO!';
+                };
+                
+                // Inicia a gravação
+                mediaRecorder.start();
+                status.textContent += ' • GRAVANDO...';
+                
+                // Para a gravação após um ciclo completo (baseado na velocidade)
+                const speed = parseFloat(document.getElementById('speed').value);
+                const cycleDuration = (1 / (0.01 * speed)) * (1000 / 60); // em milissegundos
+                
+                setTimeout(() => {
+                    if (mediaRecorder && mediaRecorder.state === 'recording') {
+                        mediaRecorder.stop();
+                    }
+                }, cycleDuration + 1000); // +1 segundo de margem
+                
+            } catch (error) {
+                alert('Erro ao exportar: ' + error.message + '\n\nTente usar um navegador mais recente (Chrome/Firefox).');
+            }
+        }
+
+        // Inicialização
+        generateNewPattern();
+    </script>
+</body>
+</html>
