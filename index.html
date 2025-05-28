@@ -33,7 +33,7 @@
 
         canvas {
             border: 1px solid #333;
-            background: #000;
+            background: #373737;
             cursor: crosshair;
         }
 
@@ -54,7 +54,7 @@
         }
 
         .control-group h3 {
-            color: #00ff88;
+            color: #6F02FD;
             margin-bottom: 12px;
             font-size: 14px;
             text-transform: uppercase;
@@ -85,7 +85,7 @@
             -webkit-appearance: none;
             width: 16px;
             height: 16px;
-            background: #00ff88;
+            background: #6F02FD;
             border-radius: 50%;
             cursor: pointer;
         }
@@ -93,14 +93,14 @@
         input[type="range"]::-moz-range-thumb {
             width: 16px;
             height: 16px;
-            background: #00ff88;
+            background: #6F02FD;
             border-radius: 50%;
             cursor: pointer;
             border: none;
         }
 
         .value {
-            color: #00ff88;
+            color: #6F02FD;
             font-weight: bold;
             font-size: 11px;
         }
@@ -108,8 +108,8 @@
         button {
             width: 100%;
             padding: 12px;
-            background: linear-gradient(45deg, #00ff88, #00cc70);
-            color: #000;
+            background: linear-gradient(45deg, #6F02FD, #5a01cc);
+            color: #FAF9FA;
             border: none;
             border-radius: 6px;
             font-weight: bold;
@@ -122,9 +122,9 @@
         }
 
         button:hover {
-            background: linear-gradient(45deg, #00cc70, #00aa60);
+            background: linear-gradient(45deg, #5a01cc, #4a0199);
             transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0, 255, 136, 0.3);
+            box-shadow: 0 4px 15px rgba(111, 2, 253, 0.3);
         }
 
         button:active {
@@ -149,8 +149,33 @@
             padding: 8px 12px;
             border-radius: 4px;
             font-size: 11px;
-            color: #00ff88;
+            color: #6F02FD;
             border: 1px solid #333;
+        }
+
+        .credit {
+            position: absolute;
+            top: 60px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #ccc;
+            border: 1px solid #444;
+            line-height: 1.4;
+        }
+
+        .credit a {
+            color: #6F02FD;
+            text-decoration: none;
+            font-weight: bold;
+            transition: color 0.3s ease;
+        }
+
+        .credit a:hover {
+            color: #5a01cc;
+            text-decoration: underline;
         }
     </style>
 </head>
@@ -159,14 +184,16 @@
         <div class="canvas-container">
             <canvas id="canvas" width="800" height="600"></canvas>
             <div class="status" id="status">Clique em "Gerar Novo Padrão" para começar</div>
+            <div class="credit">
+                Um experimento<br>
+                <a href="https://odd.studio" target="_blank">Odd Data & Design Studio</a>
+            </div>
         </div>
         
         <div class="controls">
             <div class="control-group">
                 <h3>Geração</h3>
                 <button onclick="generateNewPattern()">Gerar Novo Padrão</button>
-                <button onclick="toggleAnimation()">Pausar/Continuar</button>
-                <button onclick="resetAnimation()">Reiniciar Animação</button>
                 <button onclick="exportAsWebM()">Exportar como WebM</button>
             </div>
 
@@ -195,6 +222,10 @@
                 <div class="slider-container">
                     <label>% Móveis: <span class="value" id="mobilePercentValue">50</span>%</label>
                     <input type="range" id="mobilePercent" min="20" max="80" value="50" oninput="updateValue('mobilePercentValue', this.value)">
+                </div>
+                <div class="slider-container">
+                    <label>% Conectados: <span class="value" id="connectionPercentValue">60</span>%</label>
+                    <input type="range" id="connectionPercent" min="20" max="100" value="60" oninput="updateValue('connectionPercentValue', this.value)">
                 </div>
             </div>
 
@@ -324,7 +355,7 @@
                         break;
                 }
                 
-                ctx.strokeStyle = '#ffffff';
+                ctx.strokeStyle = '#FAF9FA';
                 ctx.lineWidth = connectionLineWidth;
                 ctx.beginPath();
                 ctx.moveTo(startX, startY);
@@ -410,10 +441,10 @@
                 ctx.save();
                 ctx.globalAlpha = globalOpacity * (this.opacity || 1);
                 ctx.lineWidth = this.strokeWidth;
-                ctx.strokeStyle = '#ffffff';
+                ctx.strokeStyle = '#FAF9FA';
                 
                 if (this.filled) {
-                    ctx.fillStyle = '#ffffff';
+                    ctx.fillStyle = '#FAF9FA';
                     ctx.beginPath();
                     if (this.currentAngle >= Math.PI * 2) {
                         // Círculo completo
@@ -425,8 +456,8 @@
                     }
                     ctx.fill();
                 } else {
-                    // Primeiro preenche com a cor de fundo (preto) para "apagar" linhas internas
-                    ctx.fillStyle = '#000000';
+                    // Primeiro preenche com a cor de fundo (#373737) para "apagar" linhas internas
+                    ctx.fillStyle = '#373737';
                     ctx.beginPath();
                     if (this.currentAngle >= Math.PI * 2) {
                         // Círculo completo
@@ -481,6 +512,7 @@
         function generateConnections() {
             connections = [];
             const availableCircles = [...circles]; // Cópia para não modificar o array original
+            const connectionPercent = parseInt(document.getElementById('connectionPercent').value) / 100;
             
             // Embaralha o array para conexões aleatórias
             for (let i = availableCircles.length - 1; i > 0; i--) {
@@ -488,19 +520,28 @@
                 [availableCircles[i], availableCircles[j]] = [availableCircles[j], availableCircles[i]];
             }
             
-            // Conecta círculos em pares
-            for (let i = 0; i < availableCircles.length - 1; i += 2) {
-                const circle1 = availableCircles[i];
-                const circle2 = availableCircles[i + 1];
-                connections.push(new Connection(circle1, circle2));
+            // Calcula quantos pares serão conectados
+            const maxPairs = Math.floor(availableCircles.length / 2);
+            const connectedPairs = Math.floor(maxPairs * connectionPercent);
+            
+            // Conecta apenas a porcentagem desejada de pares
+            for (let i = 0; i < connectedPairs * 2; i += 2) {
+                if (i + 1 < availableCircles.length) {
+                    const circle1 = availableCircles[i];
+                    const circle2 = availableCircles[i + 1];
+                    connections.push(new Connection(circle1, circle2));
+                }
             }
             
-            // Se sobrar um círculo ímpar, conecta com um par aleatório existente
-            if (availableCircles.length % 2 === 1) {
+            // Se há um número ímpar de círculos E ainda há círculos não conectados
+            // conecta o último círculo restante com um círculo já conectado aleatoriamente
+            const totalCirclesInConnections = connectedPairs * 2;
+            if (availableCircles.length % 2 === 1 && totalCirclesInConnections < availableCircles.length) {
                 const lastCircle = availableCircles[availableCircles.length - 1];
-                const randomConnection = connections[Math.floor(Math.random() * connections.length)];
-                // Conecta o último círculo com um dos círculos de uma conexão existente
-                connections.push(new Connection(lastCircle, randomConnection.from));
+                if (connections.length > 0) {
+                    const randomConnection = connections[Math.floor(Math.random() * connections.length)];
+                    connections.push(new Connection(lastCircle, randomConnection.from));
+                }
             }
         }
 
@@ -523,7 +564,7 @@
             const easedProgress = easeInOutCubic(animationProgress);
             
             // Limpa o canvas
-            ctx.fillStyle = '#000000';
+            ctx.fillStyle = '#373737';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
             // PRIMEIRO: Desenha conexões (por baixo)
@@ -537,8 +578,9 @@
             
             // Atualiza status
             const mobileCount = circles.filter(c => c.isMobile).length;
-            const pairs = Math.floor(connections.length);
-            status.textContent = `${circles.length} círculos (${mobileCount} móveis) • ${pairs} pares conectados • ${Math.round(animationProgress * 100)}%`;
+            const connectedCount = connections.length;
+            const connectionPercent = document.getElementById('connectionPercent').value;
+            status.textContent = `${circles.length} círculos (${mobileCount} móveis) • ${connectedCount} conexões (${connectionPercent}%) • ${Math.round(animationProgress * 100)}%`;
             
             animationId = requestAnimationFrame(animate);
         }
@@ -548,25 +590,6 @@
             generateConnections();
             animationProgress = 0;
             
-            if (!isAnimating) {
-                isAnimating = true;
-                animate();
-            }
-        }
-
-        function toggleAnimation() {
-            if (isAnimating) {
-                isAnimating = false;
-                cancelAnimationFrame(animationId);
-                status.textContent += ' • PAUSADO';
-            } else {
-                isAnimating = true;
-                animate();
-            }
-        }
-
-        function resetAnimation() {
-            animationProgress = 0;
             if (!isAnimating) {
                 isAnimating = true;
                 animate();
