@@ -399,22 +399,65 @@
                 
                 if (isMobile) {
                     // Posição final próxima à inicial, dentro de um raio limitado
-                    const angle = Math.random() * Math.PI * 2;
-                    const distance = Math.random() * movementRadius;
+                    let validEndPosition = false;
+                    let endAttempts = 0;
+                    const maxEndAttempts = 20;
                     
-                    let newX = x + Math.cos(angle) * distance;
-                    let newY = y + Math.sin(angle) * distance;
+                    while (!validEndPosition && endAttempts < maxEndAttempts) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const distance = Math.random() * movementRadius;
+                        
+                        let newX = x + Math.cos(angle) * distance;
+                        let newY = y + Math.sin(angle) * distance;
+                        
+                        // Define margens de 10% da tela
+                        const marginX = canvas.width * 0.1;
+                        const marginY = canvas.height * 0.1;
+                        
+                        // Garante que a nova posição não saia da área utilizável
+                        newX = Math.max(marginX + radius, Math.min(canvas.width - marginX - radius, newX));
+                        newY = Math.max(marginY + radius, Math.min(canvas.height - marginY - radius, newY));
+                        
+                        // Verifica se a posição final não colide com outros círculos
+                        // (considerando suas posições finais também)
+                        let collision = false;
+                        for (let other of circles) {
+                            if (other.isMobile) {
+                                // Verifica colisão com a posição final do outro círculo móvel
+                                const dx = newX - other.endX;
+                                const dy = newY - other.endY;
+                                const dist = Math.sqrt(dx * dx + dy * dy);
+                                if (dist < radius + other.radius + 5) {
+                                    collision = true;
+                                    break;
+                                }
+                            } else {
+                                // Verifica colisão com círculo estático
+                                const dx = newX - other.startX;
+                                const dy = newY - other.startY;
+                                const dist = Math.sqrt(dx * dx + dy * dy);
+                                if (dist < radius + other.radius + 5) {
+                                    collision = true;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if (!collision) {
+                            this.endX = newX;
+                            this.endY = newY;
+                            validEndPosition = true;
+                        }
+                        
+                        endAttempts++;
+                    }
                     
-                    // Define margens de 10% da tela
-                    const marginX = canvas.width * 0.1;
-                    const marginY = canvas.height * 0.1;
-                    
-                    // Garante que a nova posição não saia da área utilizável
-                    newX = Math.max(marginX + radius, Math.min(canvas.width - marginX - radius, newX));
-                    newY = Math.max(marginY + radius, Math.min(canvas.height - marginY - radius, newY));
-                    
-                    this.endX = newX;
-                    this.endY = newY;
+                    // Se não encontrou posição válida, fica estático
+                    if (!validEndPosition) {
+                        this.endX = x;
+                        this.endY = y;
+                        this.isMobile = false;
+                    }
                 } else {
                     this.endX = x;
                     this.endY = y;
@@ -505,6 +548,20 @@
             }
         }
 
+        function checkCollision(x, y, radius, existingCircles) {
+            for (let circle of existingCircles) {
+                const dx = x - circle.startX;
+                const dy = y - circle.startY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const minDistance = radius + circle.radius + 5; // +5 para pequena margem
+                
+                if (distance < minDistance) {
+                    return true; // Há colisão
+                }
+            }
+            return false; // Sem colisão
+        }
+
         function generateCircles() {
             circles = [];
             const count = parseInt(document.getElementById('circleCount').value);
@@ -515,24 +572,65 @@
             const maxStroke = parseFloat(document.getElementById('maxStroke').value);
             const movementRadius = parseInt(document.getElementById('movementRadius').value);
             
+            const maxAttempts = 100; // Máximo de tentativas por círculo
+            
             for (let i = 0; i < count; i++) {
-                const radius = Math.random() * (maxSize - minSize) + minSize;
+                let placed = false;
+                let attempts = 0;
                 
-                // Define margens de 10% da tela para posição inicial
-                const marginX = canvas.width * 0.1;
-                const marginY = canvas.height * 0.1;
-                const usableWidth = canvas.width - (marginX * 2) - (radius * 2);
-                const usableHeight = canvas.height - (marginY * 2) - (radius * 2);
+                while (!placed && attempts < maxAttempts) {
+                    const radius = Math.random() * (maxSize - minSize) + minSize;
+                    
+                    // Define margens de 10% da tela para posição inicial
+                    const marginX = canvas.width * 0.1;
+                    const marginY = canvas.height * 0.1;
+                    const usableWidth = canvas.width - (marginX * 2) - (radius * 2);
+                    const usableHeight = canvas.height - (marginY * 2) - (radius * 2);
+                    
+                    const x = Math.random() * usableWidth + marginX + radius;
+                    const y = Math.random() * usableHeight + marginY + radius;
+                    
+                    // Verifica se não colide com círculos existentes
+                    if (!checkCollision(x, y, radius, circles)) {
+                        const isMobile = Math.random() < mobilePercent;
+                        
+                        const circle = new Circle(x, y, radius, isMobile, movementRadius);
+                        // Aplica a espessura aleatória baseada nos controles
+                        circle.strokeWidth = Math.random() * (maxStroke - minStroke) + minStroke;
+                        
+                        circles.push(circle);
+                        placed = true;
+                    }
+                    
+                    attempts++;
+                }
                 
-                const x = Math.random() * usableWidth + marginX + radius;
-                const y = Math.random() * usableHeight + marginY + radius;
-                const isMobile = Math.random() < mobilePercent;
-                
-                const circle = new Circle(x, y, radius, isMobile, movementRadius);
-                // Aplica a espessura aleatória baseada nos controles
-                circle.strokeWidth = Math.random() * (maxStroke - minStroke) + minStroke;
-                
-                circles.push(circle);
+                // Se não conseguiu colocar após muitas tentativas, 
+                // reduz o tamanho e tenta uma vez mais
+                if (!placed) {
+                    const smallRadius = minSize;
+                    
+                    // Tenta uma última vez com tamanho mínimo
+                    for (let finalAttempt = 0; finalAttempt < 20; finalAttempt++) {
+                        const marginX = canvas.width * 0.1;
+                        const marginY = canvas.height * 0.1;
+                        const usableWidth = canvas.width - (marginX * 2) - (smallRadius * 2);
+                        const usableHeight = canvas.height - (marginY * 2) - (smallRadius * 2);
+                        
+                        const x = Math.random() * usableWidth + marginX + smallRadius;
+                        const y = Math.random() * usableHeight + marginY + smallRadius;
+                        
+                        if (!checkCollision(x, y, smallRadius, circles)) {
+                            const isMobile = Math.random() < mobilePercent;
+                            
+                            const circle = new Circle(x, y, smallRadius, isMobile, movementRadius);
+                            circle.strokeWidth = Math.random() * (maxStroke - minStroke) + minStroke;
+                            
+                            circles.push(circle);
+                            break;
+                        }
+                    }
+                }
             }
         }
 
