@@ -224,6 +224,10 @@
                     <input type="range" id="mobilePercent" min="20" max="80" value="50" oninput="updateValue('mobilePercentValue', this.value)">
                 </div>
                 <div class="slider-container">
+                    <label>Raio Movimento: <span class="value" id="movementRadiusValue">150</span></label>
+                    <input type="range" id="movementRadius" min="50" max="300" value="150" oninput="updateValue('movementRadiusValue', this.value)">
+                </div>
+                <div class="slider-container">
                     <label>% Conectados: <span class="value" id="connectionPercentValue">60</span>%</label>
                     <input type="range" id="connectionPercent" min="20" max="100" value="60" oninput="updateValue('connectionPercentValue', this.value)">
                 </div>
@@ -298,11 +302,11 @@
             constructor(from, to) {
                 this.from = from;
                 this.to = to;
-                this.birthTime = 0.1 + Math.random() * 0.4; // Nasce entre 10-50% do ciclo
+                this.birthTime = 0.4 + Math.random() * 0.3; // Nasce entre 40-70% do ciclo (depois dos círculos)
                 this.animationType = Math.floor(Math.random() * 2); // 0: crescer, 1: encolher
                 this.shrinkFromStart = Math.random() > 0.5; // Se encolhe da origem ou destino
                 this.pulsePhase = Math.random() * Math.PI * 2;
-                this.lifetime = 0.3 + Math.random() * 0.4; // Quanto tempo fica visível
+                this.lifetime = 0.3 + Math.random() * 0.2; // Quanto tempo fica visível (30-50% do tempo)
             }
 
             getAnimationProgress(globalProgress) {
@@ -366,7 +370,7 @@
         }
 
         class Circle {
-            constructor(x, y, radius, isMobile) {
+            constructor(x, y, radius, isMobile, movementRadius = 150) {
                 this.startX = x;
                 this.startY = y;
                 this.currentX = x;
@@ -391,9 +395,23 @@
                 this.startAngle = Math.random() * Math.PI * 2; // Ângulo inicial aleatório para animação angular
                 
                 if (isMobile) {
-                    // Posição final aleatória para círculos móveis
-                    this.endX = Math.random() * (canvas.width - radius * 2) + radius;
-                    this.endY = Math.random() * (canvas.height - radius * 2) + radius;
+                    // Posição final próxima à inicial, dentro de um raio limitado
+                    const angle = Math.random() * Math.PI * 2; // Ângulo aleatório
+                    const distance = Math.random() * movementRadius; // Distância aleatória dentro do raio
+                    
+                    let newX = x + Math.cos(angle) * distance;
+                    let newY = y + Math.sin(angle) * distance;
+                    
+                    // Define margens de 10% da tela
+                    const marginX = canvas.width * 0.1;
+                    const marginY = canvas.height * 0.1;
+                    
+                    // Garante que a nova posição não saia da área utilizável (com margens)
+                    newX = Math.max(marginX + radius, Math.min(canvas.width - marginX - radius, newX));
+                    newY = Math.max(marginY + radius, Math.min(canvas.height - marginY - radius, newY));
+                    
+                    this.endX = newX;
+                    this.endY = newY;
                 } else {
                     this.endX = x;
                     this.endY = y;
@@ -494,14 +512,22 @@
             const maxLineWidth = parseFloat(document.getElementById('maxLineWidth').value);
             const minStroke = parseFloat(document.getElementById('minStroke').value);
             const maxStroke = parseFloat(document.getElementById('maxStroke').value);
+            const movementRadius = parseInt(document.getElementById('movementRadius').value);
             
             for (let i = 0; i < count; i++) {
                 const radius = Math.random() * (maxSize - minSize) + minSize;
-                const x = Math.random() * (canvas.width - radius * 2) + radius;
-                const y = Math.random() * (canvas.height - radius * 2) + radius;
+                
+                // Define margens de 10% da tela para posição inicial também
+                const marginX = canvas.width * 0.1;
+                const marginY = canvas.height * 0.1;
+                const usableWidth = canvas.width - (marginX * 2) - (radius * 2);
+                const usableHeight = canvas.height - (marginY * 2) - (radius * 2);
+                
+                const x = Math.random() * usableWidth + marginX + radius;
+                const y = Math.random() * usableHeight + marginY + radius;
                 const isMobile = Math.random() < mobilePercent;
                 
-                const circle = new Circle(x, y, radius, isMobile);
+                const circle = new Circle(x, y, radius, isMobile, movementRadius);
                 // Aplica a espessura aleatória baseada nos controles
                 circle.strokeWidth = Math.random() * (maxStroke - minStroke) + minStroke;
                 
