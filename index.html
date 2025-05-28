@@ -260,7 +260,7 @@
             <div class="info">
                 <strong>Como usar:</strong><br>
                 • Ajuste os parâmetros e clique em "Gerar Novo Padrão"<br>
-                • Metade dos círculos se move, metade fica fixa<br>
+                • Animação vai e volta suavemente<br>
                 • Linhas conectam pares de círculos<br>
                 • Use "Exportar WebM" para salvar a animação<br>
                 • Experimente diferentes configurações!
@@ -278,6 +278,7 @@
         let animationId;
         let isAnimating = false;
         let animationProgress = 0;
+        let animationDirection = 1; // 1 para frente, -1 para trás
 
         // Funções de easing
         function easeInOutCubic(t) {
@@ -302,11 +303,16 @@
             constructor(from, to) {
                 this.from = from;
                 this.to = to;
-                this.birthTime = 0.4 + Math.random() * 0.3; // Nasce entre 40-70% do ciclo (depois dos círculos)
+                this.birthTime = 0.4 + Math.random() * 0.3; // Nasce entre 40-70% do ciclo
                 this.animationType = Math.floor(Math.random() * 2); // 0: crescer, 1: encolher
                 this.shrinkFromStart = Math.random() > 0.5; // Se encolhe da origem ou destino
-                this.pulsePhase = Math.random() * Math.PI * 2;
                 this.lifetime = 0.3 + Math.random() * 0.2; // Quanto tempo fica visível (30-50% do tempo)
+                
+                // Propriedades fixas para evitar piscadas
+                const minLineWidth = parseFloat(document.getElementById('minLineWidth').value);
+                const maxLineWidth = parseFloat(document.getElementById('maxLineWidth').value);
+                this.lineWidth = Math.random() * (maxLineWidth - minLineWidth) + minLineWidth;
+                this.baseOpacity = 0.6; // Opacidade base fixa
             }
 
             getAnimationProgress(globalProgress) {
@@ -321,9 +327,6 @@
                 if (animProgress === 0) return;
                 
                 const opacity = document.getElementById('opacity').value / 100;
-                const minLineWidth = parseFloat(document.getElementById('minLineWidth').value);
-                const maxLineWidth = parseFloat(document.getElementById('maxLineWidth').value);
-                const connectionLineWidth = Math.random() * (maxLineWidth - minLineWidth) + minLineWidth;
                 
                 ctx.save();
                 
@@ -337,7 +340,7 @@
                         const growProgress = easeOutCubic(animProgress);
                         endX = startX + (endX - startX) * growProgress;
                         endY = startY + (endY - startY) * growProgress;
-                        ctx.globalAlpha = opacity * 0.6 * Math.min(animProgress * 3, 1);
+                        ctx.globalAlpha = opacity * this.baseOpacity * Math.min(animProgress * 3, 1);
                         break;
                         
                     case 1: // Encolher de uma das pontas
@@ -350,17 +353,17 @@
                                 endX = endX - (endX - startX) * shrinkProgress;
                                 endY = endY - (endY - startY) * shrinkProgress;
                             }
-                            ctx.globalAlpha = opacity * 0.6 * (1 - shrinkProgress * 0.5);
+                            ctx.globalAlpha = opacity * this.baseOpacity * (1 - shrinkProgress * 0.5);
                         } else {
                             // Desaparece nos últimos 30%
                             const fadeProgress = (animProgress - 0.7) / 0.3;
-                            ctx.globalAlpha = opacity * 0.6 * (1 - fadeProgress);
+                            ctx.globalAlpha = opacity * this.baseOpacity * (1 - fadeProgress);
                         }
                         break;
                 }
                 
                 ctx.strokeStyle = '#FAF9FA';
-                ctx.lineWidth = connectionLineWidth;
+                ctx.lineWidth = this.lineWidth; // Usa a espessura fixa
                 ctx.beginPath();
                 ctx.moveTo(startX, startY);
                 ctx.lineTo(endX, endY);
@@ -383,21 +386,21 @@
                 
                 // Animações da esfera
                 this.birthTime = Math.random() * 0.5; // Quando nasce (0-50% do ciclo)
-                this.fadeInDuration = 0.1 + Math.random() * 0.6; // Duração variável do crescimento (10-70% do tempo restante)
+                this.fadeInDuration = 0.1 + Math.random() * 0.6; // Duração variável do crescimento
                 
-                // Animação angular apenas para círculos vazados (pretos), preenchidos sempre crescem por tamanho
+                // Animação angular apenas para círculos vazados
                 if (this.filled) {
                     this.animationType = 0; // Sempre crescimento por tamanho para círculos brancos
                 } else {
-                    this.animationType = Math.floor(Math.random() * 2); // 0: crescer tamanho, 1: crescer angular para círculos vazados
+                    this.animationType = Math.floor(Math.random() * 2); // 0: crescer tamanho, 1: crescer angular
                 }
                 
-                this.startAngle = Math.random() * Math.PI * 2; // Ângulo inicial aleatório para animação angular
+                this.startAngle = Math.random() * Math.PI * 2; // Ângulo inicial aleatório
                 
                 if (isMobile) {
                     // Posição final próxima à inicial, dentro de um raio limitado
-                    const angle = Math.random() * Math.PI * 2; // Ângulo aleatório
-                    const distance = Math.random() * movementRadius; // Distância aleatória dentro do raio
+                    const angle = Math.random() * Math.PI * 2;
+                    const distance = Math.random() * movementRadius;
                     
                     let newX = x + Math.cos(angle) * distance;
                     let newY = y + Math.sin(angle) * distance;
@@ -406,7 +409,7 @@
                     const marginX = canvas.width * 0.1;
                     const marginY = canvas.height * 0.1;
                     
-                    // Garante que a nova posição não saia da área utilizável (com margens)
+                    // Garante que a nova posição não saia da área utilizável
                     newX = Math.max(marginX + radius, Math.min(canvas.width - marginX - radius, newX));
                     newY = Math.max(marginY + radius, Math.min(canvas.height - marginY - radius, newY));
                     
@@ -474,7 +477,7 @@
                     }
                     ctx.fill();
                 } else {
-                    // Primeiro preenche com a cor de fundo (#373737) para "apagar" linhas internas
+                    // Primeiro preenche com a cor de fundo para "apagar" linhas internas
                     ctx.fillStyle = '#373737';
                     ctx.beginPath();
                     if (this.currentAngle >= Math.PI * 2) {
@@ -508,8 +511,6 @@
             const minSize = parseInt(document.getElementById('minSize').value);
             const maxSize = parseInt(document.getElementById('maxSize').value);
             const mobilePercent = parseInt(document.getElementById('mobilePercent').value) / 100;
-            const minLineWidth = parseFloat(document.getElementById('minLineWidth').value);
-            const maxLineWidth = parseFloat(document.getElementById('maxLineWidth').value);
             const minStroke = parseFloat(document.getElementById('minStroke').value);
             const maxStroke = parseFloat(document.getElementById('maxStroke').value);
             const movementRadius = parseInt(document.getElementById('movementRadius').value);
@@ -517,7 +518,7 @@
             for (let i = 0; i < count; i++) {
                 const radius = Math.random() * (maxSize - minSize) + minSize;
                 
-                // Define margens de 10% da tela para posição inicial também
+                // Define margens de 10% da tela para posição inicial
                 const marginX = canvas.width * 0.1;
                 const marginY = canvas.height * 0.1;
                 const usableWidth = canvas.width - (marginX * 2) - (radius * 2);
@@ -560,7 +561,6 @@
             }
             
             // Se há um número ímpar de círculos E ainda há círculos não conectados
-            // conecta o último círculo restante com um círculo já conectado aleatoriamente
             const totalCirclesInConnections = connectedPairs * 2;
             if (availableCircles.length % 2 === 1 && totalCirclesInConnections < availableCircles.length) {
                 const lastCircle = availableCircles[availableCircles.length - 1];
@@ -581,10 +581,17 @@
             if (!isAnimating) return;
             
             const speed = parseFloat(document.getElementById('speed').value);
-            animationProgress += 0.01 * speed;
             
+            // Atualiza o progresso da animação com direção
+            animationProgress += 0.01 * speed * animationDirection;
+            
+            // Inverte a direção quando atinge os limites
             if (animationProgress >= 1) {
-                animationProgress = 0; // Loop da animação
+                animationProgress = 1;
+                animationDirection = -1;
+            } else if (animationProgress <= 0) {
+                animationProgress = 0;
+                animationDirection = 1;
             }
             
             const easedProgress = easeInOutCubic(animationProgress);
@@ -606,7 +613,8 @@
             const mobileCount = circles.filter(c => c.isMobile).length;
             const connectedCount = connections.length;
             const connectionPercent = document.getElementById('connectionPercent').value;
-            status.textContent = `${circles.length} círculos (${mobileCount} móveis) • ${connectedCount} conexões (${connectionPercent}%) • ${Math.round(animationProgress * 100)}%`;
+            const directionText = animationDirection === 1 ? '→' : '←';
+            status.textContent = `${circles.length} círculos (${mobileCount} móveis) • ${connectedCount} conexões (${connectionPercent}%) • ${Math.round(animationProgress * 100)}% ${directionText}`;
             
             animationId = requestAnimationFrame(animate);
         }
@@ -615,6 +623,7 @@
             generateCircles();
             generateConnections();
             animationProgress = 0;
+            animationDirection = 1; // Reinicia na direção forward
             
             if (!isAnimating) {
                 isAnimating = true;
@@ -638,6 +647,7 @@
             try {
                 // Reinicia a animação para capturar um ciclo completo
                 animationProgress = 0;
+                animationDirection = 1;
                 recordedChunks = [];
                 
                 // Configura a captura
@@ -667,9 +677,9 @@
                 mediaRecorder.start();
                 status.textContent += ' • GRAVANDO...';
                 
-                // Para a gravação após um ciclo completo (baseado na velocidade)
+                // Para a gravação após um ciclo completo (ida e volta)
                 const speed = parseFloat(document.getElementById('speed').value);
-                const cycleDuration = (1 / (0.01 * speed)) * (1000 / 60); // em milissegundos
+                const cycleDuration = (2 / (0.01 * speed)) * (1000 / 60); // 2x porque vai e volta
                 
                 setTimeout(() => {
                     if (mediaRecorder && mediaRecorder.state === 'recording') {
